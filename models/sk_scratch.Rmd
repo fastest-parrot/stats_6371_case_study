@@ -1,0 +1,29 @@
+---
+title: "Statistics 6371 Final Project"
+author: "Sean Kennedy"
+date: "August 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sqldf)
+```
+
+## prime data sources
+
+```{r}
+housing_train = read.csv('../data/train.csv')
+housing_test = read.csv('../data/test.csv')
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r housing_train}
+plot(housing_train)
+```
+
