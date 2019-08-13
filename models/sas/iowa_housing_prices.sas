@@ -50,10 +50,19 @@ select(Neighborhood);
 end;
 run;
 
+*TODO: Plot Log;
+*This shows most of plots we want;
+*TODO: scatters by neighborhood;
+proc univariate data=train robustscale plot;
+class Neighborhood;
+var SalePrice;
+run;
+
 proc contents data=train;
 run;
 proc contents data=test;
 run;
+
 
 proc glm data = train plots=all;
 class Neighborhood;
