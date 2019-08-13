@@ -29,11 +29,14 @@ housing_test = read.csv('../data/test.csv')
    
    Does the effect vary by neighborhood?
    
-  # Format
   
-  Build and Fit the Model
+##  Build and Fit the Model
 	 
-	Checking Assumptions 
+	- Checking Assumptions 
+		
+		Test for outliers (from SAS):
+		
+		
 		Residual Plots 
 		Influential point analysis (Cook's D and Leverage)
 		Make sure to address each assumption.

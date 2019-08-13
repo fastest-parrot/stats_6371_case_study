@@ -31,6 +31,8 @@ set work.housing_train;
 where Neighborhood = 'NAmes'
 or Neighborhood = 'Edwards'
 or Neighborhood = 'BrkSide';
+log_SalePrice = log(SalePrice);
+log_GrLivArea = log(GrLivArea);
 select(Neighborhood);
 	when('NAmes') do;
 		NAmes = 1;
@@ -58,6 +60,13 @@ class Neighborhood;
 var SalePrice;
 run;
 
+
+proc sgpanel data=train;
+panelby Neighborhood;
+scatter x = GrLivArea y=SalePrice;
+title 'Sale Price vs GrLivArea By Neighborhood';
+run;
+
 proc contents data=train;
 run;
 proc contents data=test;
@@ -65,8 +74,8 @@ run;
 
 
 proc glm data = train plots=all;
-class Neighborhood;
-model SalePrice = Neighborhood GrLivArea / cli solution;
+class Neighborhood (REF="Edwards");
+model log_SalePrice = Neighborhood | log_GrLivArea / cli solution ;
 output out = results p = Predict;
 run;
 
