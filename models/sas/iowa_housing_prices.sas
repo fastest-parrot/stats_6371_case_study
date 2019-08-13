@@ -1,18 +1,63 @@
-proc print data=work.housing_test;
-run;
 
 data test;
 set work.housing_test;
+where Neighborhood = 'NAmes'
+or Neighborhood = 'Edwards'
+or Neighborhood = 'BrkSide';
 SalePrice = .;
+select(Neighborhood);
+	when('NAmes') do;
+		NAmes = 1;
+		Edwards = 0;
+		BrkSide = 0;
+	end;
+	when('Edwards') do;
+		NAmes = 0;
+		Edwards = 1;
+		BrkSide = 0;
+	end;
+	when('BrkSide') do;
+		NAmes = 0;
+		Edwards = 0;
+		BrkSide = 1;
+	end;
+end;
 run;
 
-data train2;
-set work.housing_train work.housing_test;
+*split and filter the data;
+
+data train;
+set work.housing_train;
+where Neighborhood = 'NAmes'
+or Neighborhood = 'Edwards'
+or Neighborhood = 'BrkSide';
+select(Neighborhood);
+	when('NAmes') do;
+		NAmes = 1;
+		Edwards = 0;
+		BrkSide = 0;
+	end;
+	when('Edwards') do;
+		NAmes = 0;
+		Edwards = 1;
+		BrkSide = 0;
+	end;
+	when('BrkSide') do;
+		NAmes = 0;
+		Edwards = 0;
+		BrkSide = 1;
+	end;
+end;
 run;
 
-proc glm data = train2 plots=all;
-class RoofStyle Exterior1st Exterior2nd MasVnrType;
-model SalePrice = RoofStyle Exterior1st Exterior2nd MasVnrType LotArea BedroomAbvGr YearBuilt / cli solution;
+proc contents data=train;
+run;
+proc contents data=test;
+run;
+
+proc glm data = train plots=all;
+class Neighborhood;
+model SalePrice = Neighborhood GrLivArea / cli solution;
 output out = results p = Predict;
 run;
 
