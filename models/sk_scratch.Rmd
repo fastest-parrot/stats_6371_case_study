@@ -14,9 +14,21 @@ library(sqldf)
 ## prime data sources
 
 ```{r}
+
 housing_train = read.csv('../data/train.csv')
 housing_test = read.csv('../data/test.csv')
 
+housing_train['SalePrice'] = c(NULL)
+na_count_train <-sapply(housing_train, function(y) sum(length(which(is.na(y)))))
+
+na_count_test <-sapply(housing_test, function(y) sum(length(which(is.na(y)))))
+na_count_test[NaN] = 0
+na_count_train[NaN] = 0
+names(na_count_test)
+na_summary = data.frame(na_count_test, na_count_train, row.names = names(na_count_test))
+
+write.csv(na_summary, file = 'na_summary.csv', row.names=TRUE)
+#na_summary = na_summary[sapply(na_summary, function(x) ) > 0)]
 ```
 
 ## Century 21 Analysis 
