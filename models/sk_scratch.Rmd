@@ -18,6 +18,13 @@ library(sqldf)
 housing_train = read.csv('../data/train.csv')
 housing_test = read.csv('../data/test.csv')
 
+housing_train$OverallQual = factor(housing_train$OverallQual)
+housing_test$OverallQual = factor(housing_test$OverallQual)
+housing_train$OverallCond = factor(housing_train$OverallCond)
+housing_test$OverallCond = factor(housing_test$OverallCond)
+
+
+
 housing_train['SalePrice'] = c(NULL)
 na_count_train <-sapply(housing_train, function(y) sum(length(which(is.na(y)))))
 
@@ -29,7 +36,199 @@ na_summary = data.frame(na_count_test, na_count_train, row.names = names(na_coun
 
 write.csv(na_summary, file = 'na_summary.csv', row.names=TRUE)
 #na_summary = na_summary[sapply(na_summary, function(x) ) > 0)]
+
+all_data = sqldf("SELECT
+                      tr.*,
+                      'Train' as Source
+                FROM housing_train tr
+                  UNION ALL
+                SELECT tt.*
+                , 'Test' as Source FROM housing_test tt")
+
+levels(housing_test$BldgType)
+levels(housing_train$BldgType)
+levels(housing_test$Condition1)
+levels(housing_train$Condition1)
+levels(housing_test$Neighborhood)
+levels(housing_train$Neighborhood)
+
+factor_length_match = sapply(factor_columns(housing_test), function(z) length(levels(housing_train[,z])) ==length(levels(housing_test[,z])))
+categorical_mismatches = data.frame(categories)
+
+
+
 ```
+
+```{r}
+loadData <-function(){
+  attrition_data = read.csv('atttrition.csv', stringsAsFactors=TRUE)
+  drop_cols = c('Over18', 'EmployeeNumber', 'EmployeeCount', 'StandardHours')
+  attrition_data[,drop_cols] = list(NULL)
+
+  #potentially biasing Observation(s)?
+  attrition_data = sqldf("SELECT * FROM attrition_data WHERE JobRole <> 'Research Director'")
+  
+  #hacky - sqlDF is fucking up my colnames
+  names(attrition_data)[1] = 'Age'
+  return(attrition_data)
+  #attrition_data$Education = factor(attrition_data$Education)
+}
+#helper functions
+generate_interaction_string <- function(columns){
+    #f = paste(columns, ':')
+    f = c()
+    for(x in columns)
+      for(y in columns)
+      {
+        if(x != y)
+          if(!is.element(glue::glue('{y}:{x}'),f))
+            f = append(f, glue::glue('{x}:{y}'))
+      }
+    return(f)
+}
+
+build_model_string <- function(target, columns, interactions=c()){
+    model = c(columns, interactions)
+    target_string = glue::glue("{target} ~ ")
+    model_string = paste(model, collapse="+")
+    f = target_string + model_string
+    return(f)
+}
+
+run_linear_model <- function(data, target, columns, interactions=c()){
+    model = c(columns, interactions)
+    f = build_model_string(target, columns, interactions)
+    
+    sample = select(data, columns, target)
+    
+    
+    #Train Test Split
+    seed = 1234
+    sample_size = floor(test_train_split*nrow(sample))
+    set.seed(seed)
+    train_set = sample(seq_len(nrow(sample)), size=sample_size)
+    
+    train = sample[train_set,]
+    test = sample[-train_set,]
+    
+    
+    #Build the model
+    linear_model <-vglm(as.formula(f),family = "multinomial",data=train)
+    
+    
+    #Summarize the model
+    #print(summary(linear_model))
+    
+    #Run Predictions
+    x<-select(test, -target)
+    y<-select(test, target)
+    
+    probability<-predict(linear_model,x,type="response")
+    test$pred_log_reg<-apply(probability,1,which.max)
+    test$pred_log_reg[which(test$pred_log_reg=="1")]<-levels(test[,target])[1]
+    test$pred_log_reg[which(test$pred_log_reg=="2")]<-levels(test[,target])[2]
+    
+    
+    #Accuracy of the model
+    mtab<-table(test$pred_log_reg,test[,target])
+    confusion = confusionMatrix(mtab)
+    return(list(linear_model, f, mtab, confusion))
+}
+run_nn_model <- function(data, target, columns, interactions=c()){
+    model = c(columns, interactions)
+    f = build_model_string(target, columns, interactions)
+    
+    sample = select(data, columns, target)
+    
+    
+    #Train Test Split
+    seed = 1234
+    sample_size = floor(test_train_split*nrow(sample))
+    set.seed(seed)
+    train_set = sample(seq_len(nrow(sample)), size=sample_size)
+    
+    train = sample[train_set,]
+    test = sample[-train_set,]
+    
+    
+    #Build the model
+    neural_model <-nnet(as.formula(f),data=train,size = 4,decay = 0.0001,maxit = 500)
+    
+    
+    #Summarize the model
+    #print(summary(neural_model))
+    
+    #Run Predictions
+    x<-select(test, -target)
+    y<-select(test, target)
+    
+    #Predict using the model
+    test$pred_nnet<-predict(neural_model,x,type='class')
+    #str(f)
+    #Accuracy of the model
+  
+    mtab<-table(test$pred_nnet,test[,target])
+    #print(summary(mtab))
+    confusion = confusionMatrix(mtab)
+    return(list(neural_model, f, mtab, confusion))
+    
+  
+   
+}
+#helper function for quick viz of percentage of employees that have left
+attrition_by_category <- function(category, data){
+
+sql_statement = glue::glue('SELECT 
+                                  {category}
+                                  ,Attrition
+                                  ,COUNT(*)*1.0  as Count
+                             FROM data 
+                             GROUP BY {category}
+                                     , Attrition')  
+  
+counts = sqldf(sql_statement)
+yes =sqldf("SELECT * FROM counts WHERE Attrition = 'Yes'")
+no =sqldf("SELECT * FROM counts WHERE Attrition = 'No'")
+attrition_rates = sqldf(glue::glue('SELECT
+          y.{category},
+          y.Count as Departed,
+          n.Count as Employed,
+          (y.Count + n.Count) as Total,
+          (y.Count/(n.Count + y.Count)) as AttritionRate
+       FROM yes y
+       LEFT JOIN no n ON n.{category} = y.{category}'))
+print(attrition_rates)
+return(ggplot(counts, aes(counts[,category], counts$Count)) + geom_bar(aes(fill = Attrition), 
+   width = 0.4, position = position_dodge(width=0.5), stat="identity") + xlab(category) +
+   theme(legend.position="top", legend.title = 
+   element_text(),axis.title.x=element_text(), 
+   axis.title.y=element_text()))
+}
+
+#helper function for extracting col names
+#TODO: add cols that are factors but also ints 
+factor_columns <- function(dataFrame){
+  return(colnames(dataFrame[,sapply(dataFrame, is.factor) & colnames(dataFrame) != "id"]))
+}
+
+non_factor_columns <- function(dataFrame){
+  return(colnames(dataFrame[, !sapply(dataFrame, is.factor) & colnames(dataFrame) != "id"]))
+}
+
+
+plotSatisfaction <- function(category, data, label){
+  sql = glue::glue('SELECT
+                   {category},
+                   Attrition,
+                   AVG(satisfaction_index) as AverageHappiness
+                   FROM data
+                   GROUP BY {category}, Attrition')
+  happiness = sqldf(sql)
+  return(ggplot(happiness, aes(happiness[,category], happiness$AverageHappiness)) + geom_bar(aes(fill = factor(happiness[,category])), 
+   width = 0.4, position = position_dodge(width=0.5), stat="identity") + coord_flip() +  
+   xlab(glue::glue('{category} {label}')) + ylab('Happiness')) 
+}
+``
 
 ## Century 21 Analysis 
   
@@ -66,8 +265,8 @@ Conclusion
 	A short summary of the analysis.
 
    
+```
 ```{r}
-
 neighborhood_data = sqldf("SELECT 
                             Id  
                             , Neighborhood
