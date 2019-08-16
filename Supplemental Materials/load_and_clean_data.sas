@@ -1,0 +1,124 @@
+data working;
+set WORK.housing_all;
+if LotFrontage = 'NA' then LotFrontage_Mod = 0.0;
+else LotFrontage_Mod = LotFrontage;
+if _N_ > 1460 THEN SalePrice_Actual = .;
+else SalePrice_Actual = SalePrice;
+
+if Electrical = 'NA' THEN Electrical_Mod = 'Other';
+else Electrical_Mod = Electrical;
+if SaleType = 'NA' THEN SaleType_Mod = 'Other';
+else SaleType_Mod = SaleType;
+if Exterior2nd = 'NA' THEN Exterior2nd_Mod = 'Other';
+else Exterior2nd_Mod = Exterior2nd;
+if Exterior1st = 'NA' THEN Exterior1st_Mod = 'Other';
+else Exterior1st_Mod = Exterior1st;
+if Alley = 'NA' THEN Alley_Mod = 'Other';
+else Alley_Mod = Alley;
+if Fence = 'NA' THEN Fence_Mod = 'Other';
+else Fence_Mod = Fence;
+if MiscFeature = 'NA' THEN MiscFeature_Mod = 'Other';
+else MiscFeature_Mod = MiscFeature;
+if FireplaceQu = 'NA' THEN FireplaceQu_Mod = 'Other';
+else FireplaceQu_Mod = FirePlaceQu;
+if GarageQual = 'NA' THEN GarageQual_Mod = 'Other';
+else GarageQual_Mod = GarageQual;
+if GarageCond = 'NA' THEN GarageCond_Mod = 'Other';
+else GarageCond_Mod = GarageCond;
+if GarageFinish = 'NA' THEN GarageFinish_Mod = 'Other';
+else GarageFinish_Mod = GarageFinish;
+if GarageType = 'NA' THEN GarageType_Mod = 'Other';
+else GarageType_Mod = GarageType;
+if BsmtCond = 'NA' THEN BsmtCond_Mod = 'Other';
+else BsmtCond_Mod = BsmtCond;
+if BsmtExposure = 'NA' THEN BsmtExposure_Mod = 'Other';
+else BsmtExposure_Mod = BsmtExposure;
+if BsmtQual = 'NA' THEN BsmtQual_Mod = 'Other';
+else BsmtQual_Mod = BsmtQual;
+if BsmtFinType2 = 'NA' THEN BsmtFinType2_Mod = 'Other';
+else BsmtFinType2_Mod = BsmtfinType2;
+if BsmtFinType1 = 'NA' THEN BsmtFinType1_Mod = 'Other';
+else BsmtFinType1_Mod = BsmtFinType1;
+ageAtSale = YrSold - YearBuilt;
+if Functional = 'NA' THEN Functional_Mod = 'Typ';
+else Functional_Mod = Functional;
+*adding these so we can run PROC REG's visualizations;
+*wouldn't want to do this for everything--- PROC REG IS SHIT;
+select(Neighborhood);
+	when('NAmes') do;
+		NAmes = 0;
+		Edwards = 0;
+		BrkSide = 0;
+		NAmesGrLivArea = 0.0;
+		EdwardsGrLivAre = 0.0;
+		BrkSideGrLivArea = 0.0;
+	end;
+	when('Edwards') do;
+		NAmes = 0;
+		Edwards = 1;
+		BrkSide = 0;
+		NAmesGrLivArea = 0.0;
+		EdwardsGrLivArea = GrLivArea;
+		BrkSideGrLivArea = 0.0;
+	end;
+	when('BrkSide') do;
+		NAmes = 0;
+		Edwards = 0;
+		BrkSide = 1;
+		NAmesGrLivArea = 0.0;
+		EdwardsGrLivArea = 0.0;
+		BrkSideGrLivArea = GrLivArea;
+	end;
+	otherwise do;
+	NAmes = 0;
+	Edwards = 0;
+	BrkSide = 0;
+	NAmesGrLivArea = 0.0;
+	EdwardsGrLivArea = 0.0;
+	BrkSideGrLivArea = 0.0;
+	end;
+end;
+run;
+
+data working;
+set working;
+if LotFrontage_Mod = 0.0 THEN LotFrontage_Mod = MEDIAN(LotFrontage_Mod);
+else LotFrontage_Mod = LotFrontage_Mod;
+run;
+
+*data working;
+*set working;
+*if Id NOT IN (1299, 131) THEN output;
+*run;
+
+data outliers;
+set working;
+if Id IN(1299, 131)then output;
+run;
+
+data working_q1;
+set work.working;
+where Neighborhood = 'NAmes'
+or Neighborhood = 'Edwards'
+or Neighborhood = 'BrkSide';
+run;
+
+data working_test;
+set working;
+if Source = 'Test' then output;
+run;
+
+data working_test_q1;
+set working_q1;
+if Source = 'Test' then output;
+run;
+
+data working_train;
+set working;
+if Source = 'Train' then output;
+run;
+
+data working_train_q1;
+set working_q1;
+if Source = 'Train' then output;
+run;

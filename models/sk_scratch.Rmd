@@ -19,7 +19,7 @@ housing_train = read.csv('../data/train.csv')
 housing_test = read.csv('../data/test.csv')
 housing_test['SalePrice'] = c(0.0)
 
-
+median(housing_train$GrLivArea)
 
 
 
@@ -111,7 +111,7 @@ run_linear_model <- function(data, target, columns, interactions=c()){
     train = sample[train_set,]
     test = sample[-train_set,]
     
-    
+ 
     #Build the model
     linear_model <-vglm(as.formula(f),family = "multinomial",data=train)
     
