@@ -17,15 +17,21 @@ library(sqldf)
 
 housing_train = read.csv('../data/train.csv')
 housing_test = read.csv('../data/test.csv')
+housing_test['SalePrice'] = c(0.0)
+
+
+
+
 
 housing_train$OverallQual = factor(housing_train$OverallQual)
 housing_test$OverallQual = factor(housing_test$OverallQual)
 housing_train$OverallCond = factor(housing_train$OverallCond)
 housing_test$OverallCond = factor(housing_test$OverallCond)
 
+levels(housing_train$HouseStyle)
+levels(housing_test$HouseStyle)
 
 
-housing_train['SalePrice'] = c(NULL)
 na_count_train <-sapply(housing_train, function(y) sum(length(which(is.na(y)))))
 
 na_count_test <-sapply(housing_test, function(y) sum(length(which(is.na(y)))))
@@ -44,17 +50,11 @@ all_data = sqldf("SELECT
                   UNION ALL
                 SELECT tt.*
                 , 'Test' as Source FROM housing_test tt")
-
-levels(housing_test$BldgType)
-levels(housing_train$BldgType)
-levels(housing_test$Condition1)
-levels(housing_train$Condition1)
-levels(housing_test$Neighborhood)
-levels(housing_train$Neighborhood)
+write.csv(all_data,'all_data.csv')
 
 factor_length_match = sapply(factor_columns(housing_test), function(z) length(levels(housing_train[,z])) ==length(levels(housing_test[,z])))
-categorical_mismatches = data.frame(categories)
-
+categorical_mismatches = data.frame(factor_length_match)
+write.csv(categorical_mismatches, 'categorical_mismatches.csv')
 
 
 ```
